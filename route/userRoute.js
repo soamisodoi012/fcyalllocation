@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const userController = require('../controller/userController.js');
+const {login} = require('../controller/login.js');
+const {setupRolesAndPermissions,createRole} = require('../controller/rolePermission.js');
+const ValidationRules = require('../util/userDataValidation.js');
+const { verifyToken, refreshToken, generateAccessToken } = require('../middleware/security');
+router.post('/user',userController.createUser);
+router.post('/permission',setupRolesAndPermissions);
+router.post('/createRole',createRole);
+router.post('/login',login);//,generateAccessToken);
+module.exports = router;
