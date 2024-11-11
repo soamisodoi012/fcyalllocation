@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User=require('./user');
 const Branch = require('./branch');
+//const Currency = require('./currency');
   const LiveFcyAllocation = sequelize.define('FcyLiveAllocation', {
     queueNumber: {
       type: DataTypes.STRING,
@@ -24,7 +25,11 @@ const Branch = require('./branch');
       type: DataTypes.STRING,
       allowNull: false,
     },
-    importedItem: {
+    category:{
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    item: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -42,34 +47,34 @@ const Branch = require('./branch');
       allowNull: false,
     },
     proformaAmount: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.FLOAT,
       allowNull: false,
+    },
+    equivalentUsd:{
+      type: DataTypes.FLOAT,
+      allowNull:true,
     },
     applicationDate: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    registrationDate: {
+    queueDate: {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    // branch: {
-    //   type: DataTypes.STRING,
-    //   allowNull: false,
-    // },
-    branchCode: {  // Foreign key for Branch
+    proformaDate:{
+      type:DataTypes.DATE,
+      allowNull: false,
+    },
+    branch: {
       type: DataTypes.STRING,
       allowNull: false,
-      references: {
-        model: Branch,
-        key: 'branchCode',
-      },
-    },
+     },
     modeOfPayment: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM('CAD', 'TT', 'LC'),
       allowNull: false,
     },
-    approvedAt: {
+    approvedDate: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,  // Automatically set to the current date/time
@@ -78,25 +83,29 @@ const Branch = require('./branch');
       type: DataTypes.STRING,
      
     },
-    // approvedBy: {
-    //   type: DataTypes.STRING,
-    //   allowNull: false,
-    //   references: {
-    //     model: User,
-    //     key: 'username',
-    //   },
-    // },
+    immputer: {
+      type: DataTypes.STRING,
+       allowNull: false,
+
+     },
+    approvedBy: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   }, {
     timestamps:false,
     hooks: {
+      
       beforeCreate: (allocation) => {
         allocation.status = 'approved';  // Set status automatically
       },
     },
+    
   });
-  LiveFcyAllocation.associate = function(models) {
-    LiveFcyAllocation.belongsTo(models.Branch, { foreignKey: 'branchCode' });
-  };
+  // LiveFcyAllocation.associate = function(models) {
+  //   LiveFcyAllocation.belongsTo(models.Branch, { foreignKey: 'branchCode' });
+  //   LiveFcyAllocation.belongsTo(models.Currency,{ foreignKey: 'currencyCode'})
+  // };
   
   module.exports=LiveFcyAllocation;
 

@@ -1,127 +1,12 @@
-// const { DataTypes } = require('sequelize');
-// const sequelize = require('../config/database');
-// const User = require('./user');
-// const Branch = require('./branch');
-// const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', {
-//   queueNumber: {
-//     type: DataTypes.STRING,
-//     primaryKey: true,
-//     allowNull: false,
-//   },
-//   importerName: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   importerNBEAccNumber: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   importerTIN: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   importerPhone: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   importedItem: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   hsCode: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   proformaNumber: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   proformaCurrency: {
-//     type: DataTypes.ENUM('USD', 'ETB', 'EURO', 'POUND'),
-//     allowNull: false,
-//   },
-//   proformaAmount: {
-//     type: DataTypes.DECIMAL(10, 2),
-//     allowNull: false,
-//   },
-//   applicationDate: {
-//     type: DataTypes.DATE,
-//     allowNull: false,
-//   },
-//   registrationDate: {
-//     type: DataTypes.DATE,
-//     allowNull: false,
-//   },
-//   branchCode: {  // Foreign key for Branch
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//     references: {
-//       model: Branch,
-//       key: 'branchCode',
-//     },
-//   },
-//   modeOfPayment: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   createdAt: {
-//     type: DataTypes.DATE,
-//     allowNull: false,
-//     defaultValue: DataTypes.NOW,
-//   },
-//   status: {
-//     type: DataTypes.STRING,
-//   },
-//   createdBy: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//     references: {
-//       model: User,
-//       key: 'username',
-//     },
-//   },
-// }, {
-//   timestamps: false,
-//   hooks: {
-//     beforeCreate: async (allocation) => {
-//       // Generate queueNumber before creating the entry
-//       const lastEntry = await UnauthorizedFcyAllocation.findOne({
-//         order: [['queueNumber', 'DESC']],
-//       }); 
-//       let newQueueNumber;
-//       if (!lastEntry) {
-//         newQueueNumber = 'GBB0000000001'; // Start from this value
-//       } else {
-//         const lastQueueNumber = lastEntry.queueNumber;
-//         const numberPart = parseInt(lastQueueNumber.replace('GBB', ''), 10);
-//         const nextNumberPart = numberPart + 1;
-//         newQueueNumber = `GBB${nextNumberPart.toString().padStart(10, '0')}`;
-//       }
-  
-//       console.log("Generated queueNumber:", newQueueNumber); // Debugging log
-  
-//       allocation.queueNumber = newQueueNumber;  // Set the generated queue number
-//       allocation.status="pending"; // Set the status
-  
-//       console.log("Allocation after setting queueNumber:", allocation); // Debugging log
-//     }
-//   }
-  
-// });
 
-// // Association with User model
-// UnauthorizedFcyAllocation.associate = function(models) {
-//   UnauthorizedFcyAllocation.belongsTo(models.User, { as: 'createdBy', foreignKey: 'username' });
-//   UnauthorizedFcyAllocation.belongsTo(models.Branch, { foreignKey: 'branchCode' });
-// };
-
-// module.exports = UnauthorizedFcyAllocation;
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./user');
 const Branch = require('./branch');
-const Currency = require('./currency');
-
+const AuthorizedFcyAllocation=require('./FcyLive')
+//const Currency = require('./currency');
+const  Item  = require('./ItemDetail');
+const Category = require('./Category');
 const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', {
   queueNumber: {
     type: DataTypes.STRING,
@@ -144,44 +29,49 @@ const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', 
     type: DataTypes.STRING,
     allowNull: false,
   },
-  importedItem: {
+  hsCode: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  hsCode: {
+  item: {  // Foreign key for Branch
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  category:{
     type: DataTypes.STRING,
     allowNull: false,
   },
   proformaNumber: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique:true,
+    unique:false,
   },
-  // proformaCurrency: {
-  //   type: DataTypes.ENUM('USD', 'ETB', 'EURO', 'POUND'),
-  //   allowNull: false,
-  // },
   proformaCurrency: {  // Foreign key for Branch
     type: DataTypes.STRING,
     allowNull: false,
-    references: {
-      model: Currency,
-      key: 'currencyCode',
-    },
+  },
+  proformaDate:{
+    type:DataTypes.DATE,
+    allowNull: false,
   },
   proformaAmount: {
     type: DataTypes.FLOAT,
     allowNull: false,
   },
+  equivalentUsd:{
+    type: DataTypes.FLOAT,
+    allowNull:true,
+  },
   applicationDate: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true,
   },
-  registrationDate: {
+  queueDate: {
     type: DataTypes.DATE,
     allowNull: false,
+    defaultValue: DataTypes.NOW,
   },
-  branchCode: {  // Foreign key for Branch
+  branch: {  // Foreign key for Branch
     type: DataTypes.STRING,
     allowNull: false,
     references: {
@@ -190,14 +80,9 @@ const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', 
     },
   },
   modeOfPayment: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
+        type: DataTypes.ENUM('CAD', 'TT', 'LC'),
+        allowNull: false,
+      },
   status: {
     type: DataTypes.STRING,
   },
@@ -213,31 +98,50 @@ const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', 
        key: 'username',
      },
    },
-}, {
+}, 
+{
   timestamps: false,
   hooks: {
     beforeCreate: async (allocation) => {
-      // Generate queueNumber before creating the entry
-      const lastEntry = await UnauthorizedFcyAllocation.findOne({
-        order: [['queueNumber', 'DESC']],
-      }); 
-      let newQueueNumber;
-      if (!lastEntry) {
-        newQueueNumber = 'GBB_0000000001'; // Start from this value
-      } else {
-        const lastQueueNumber = lastEntry.queueNumber;
-        const numberPart = parseInt(lastQueueNumber.replace('GBB_', ''), 10);
-        const nextNumberPart = numberPart + 1;
-        newQueueNumber = `GBB_${nextNumberPart.toString().padStart(10, '0')}`;
-      }
-  
-      console.log("Generated queueNumber:", newQueueNumber); // Debugging log
-  
-      allocation.queueNumber = newQueueNumber;  // Set the generated queue number
-      allocation.status = "pending"; // Set the initial status
-  
-      console.log("Allocation after setting queueNumber:", allocation); // Debugging log
+        // Find the last queueNumber from both UnauthorizedFcyAllocation and AuthorizedFcyAllocation
+        const [unauthorizedLastEntry, authorizedLastEntry] = await Promise.all([
+            UnauthorizedFcyAllocation.findOne({
+                order: [['queueNumber', 'DESC']],
+            }),
+            AuthorizedFcyAllocation.findOne({
+                order: [['queueNumber', 'DESC']],
+            }),
+        ]);
+
+        // Determine the highest queueNumber from both entries
+        let lastQueueNumber;
+        if (unauthorizedLastEntry && authorizedLastEntry) {
+            lastQueueNumber = unauthorizedLastEntry.queueNumber > authorizedLastEntry.queueNumber 
+                ? unauthorizedLastEntry.queueNumber 
+                : authorizedLastEntry.queueNumber;
+        } else if (unauthorizedLastEntry) {
+            lastQueueNumber = unauthorizedLastEntry.queueNumber;
+        } else if (authorizedLastEntry) {
+            lastQueueNumber = authorizedLastEntry.queueNumber;
+        }
+
+        let newQueueNumber;
+        if (!lastQueueNumber) {
+            newQueueNumber = 'GBB_0000000001'; // Start from this value
+        } else {
+            const numberPart = parseInt(lastQueueNumber.replace('GBB_', ''), 10);
+            const nextNumberPart = numberPart + 1;
+            newQueueNumber = `GBB_${nextNumberPart.toString().padStart(10, '0')}`;
+        }
+
+        console.log("Generated queueNumber:", newQueueNumber); // Debugging log
+
+        allocation.queueNumber = newQueueNumber;  // Set the generated queue number
+        allocation.status = "new"; // Set the initial status
+
+        console.log("Allocation after setting queueNumber:", allocation); // Debugging log
     },
+
     beforeUpdate: async (allocation) => {
       // Set rejectionReason when status changes to 'rejected'
       if (allocation.changed('status') && allocation.status === 'rejected') {
@@ -249,8 +153,9 @@ const UnauthorizedFcyAllocation = sequelize.define('UnauthorizedFcyAllocation', 
 
 // Association with User model
 UnauthorizedFcyAllocation.associate = function(models) {
-  // UnauthorizedFcyAllocation.belongsTo(models.User, { as: 'createdBy', foreignKey: 'username' });
+   UnauthorizedFcyAllocation.hasMany(models.User, { as: 'immputer', foreignKey: 'username' });
   UnauthorizedFcyAllocation.belongsTo(models.Branch, { foreignKey: 'branchCode' });
+  // UnauthorizedFcyAllocation.belongsTo(models.Item,{ foreignKey: 'itemCode' });
 };
 
 module.exports = UnauthorizedFcyAllocation;

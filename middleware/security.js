@@ -4,18 +4,32 @@ const User = require('../model/user'); // Import the User model
 const Role = require('../model/role'); // Import the Role model
 const Permission = require('../model/permission'); // Import the Permission model
 const RolePermission = require('../model/rolePermission');
-// Secret key used to sign and verify the JWT
-const JWT_SECRET_KEY = 'psychology'; //process.env.JWT_SECRET_KEY;
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const REFRESH_TOKEN_SECRET_KEY = process.env.REFRESH_TOKEN_SECRET_KEY;
 
 // Token expiration times
-const ACCESS_TOKEN_EXPIRATION = '1h';
-const REFRESH_TOKEN_EXPIRATION = '7d';
-
-// Generate a new access token
+const ACCESS_TOKEN_EXPIRATION = '35s';
 const generateAccessToken = (user) => {
-    return jwt.sign({ roleId: user.roleId, username: user.username }, JWT_SECRET_KEY, { expiresIn: ACCESS_TOKEN_EXPIRATION });
+    return jwt.sign({ roleId: user.roleId, username: user.username }, process.env.JWT_SECRET_KEY, { expiresIn: ACCESS_TOKEN_EXPIRATION });
 };
+const token = async (req, res) => {
+    const { roleId, username } = req.body;
+
+    // Validate that roleId and username are provided
+    if (!roleId || !username) {
+        return res.status(400).send('roleId and username are required');
+    }
+
+    try {
+        // Generate token and send it back as response
+        const accessToken = generateAccessToken({ roleId, username });
+        return res.json({ accessToken });
+    } catch (error) {
+        // Handle any potential errors
+        return res.status(500).send('Error generating token');
+    }
+};
+
 const verifyToken = (requiredPermissions = []) => {
     return async (req, res, next) => {
         const authHeader = req.headers.authorization;
@@ -75,43 +89,35 @@ const verifyToken = (requiredPermissions = []) => {
         });
     };
 };
-
-// Middleware to refresh the token
-const refreshToken = (req, res, next) => {
-    // Extract Bearer token from Authorization header
+const refreshAccessToken = async (req, res) => {
+    // Check if the Authorization header is provided
     const authHeader = req.headers.authorization;
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(403).json({ message: 'No refresh token provided' });
     }
-    
-    const refreshToken = authHeader.split(' ')[1]; // Extract the token part from Bearer scheme
 
-    // Verify the refresh token
-    jwt.verify(refreshToken, REFRESH_TOKEN_SECRET_KEY, async (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ message: 'Failed to authenticate refresh token' });
-        }
+    // Extract the refresh token from the Authorization header
+    const refreshToken = authHeader.split(' ')[1];
 
-        // Fetch user from the database
-        try {
-            const user = await User.findById(decoded.userId);
-            if (!user) {
-                return res.status(404).json({ message: 'User not found' });
-            }
-
-            // Generate a new access token
-            const newAccessToken = generateAccessToken(user);
-            res.json({ accessToken: newAccessToken, refreshToken });
-        } catch (err) {
-            return res.status(500).json({ message: 'Server error' });
-        }
-    });
+    try {
+        // Verify the refresh token
+        const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET_KEY);
+        
+        // Generate a new access token
+        const newAccessToken = generateAccessToken({ roleId: decoded.roleId, username: decoded.username });
+        
+        return res.json({ accessToken: newAccessToken });
+    } catch (error) {
+        return res.status(403).json({ message: 'Invalid or expired refresh token' });
+    }
 };
 
 
 module.exports = {
     verifyToken,
-    refreshToken,
+    refreshAccessToken,
     generateAccessToken,
+    token,
    // generateRefreshToken,
 };

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Sequelize } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./user');
 
@@ -13,8 +13,9 @@ const Session = sequelize.define('Session', {
     primaryKey:true,
   },
   loginAt:{
-    type:DataTypes.DATE,
-    allowNull:false,
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
   },
   token: {
     type: DataTypes.STRING,
@@ -24,8 +25,8 @@ const Session = sequelize.define('Session', {
 }, {
   timestamps: false,
   hooks: {
-    beforeCreate: (allocation) => {
-      allocation.loginAt = Date.now;  // Set status automatically
+    beforeCreate: (Session) => {
+      Session.loginAt = new Date();  // Set status automatically
     },
   },
 });
